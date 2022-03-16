@@ -34,6 +34,7 @@ logging.basicConfig(
 
 
 def send_message(bot, message):
+    """Отправляет сообщение."""
     logger.info(f'Отправка сообщения: {message}')
     bot_message = bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
     if not bot_message:
@@ -43,7 +44,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(current_timestamp):
-    '''Делает запрос к эндпоинту API-сервиса.'''
+    """Делает запрос к эндпоинту API-сервиса."""
     params = {'from_date': current_timestamp}
     try:
         api_answer = requests.get(ENDPOINT, headers=HEADERS, params=params)
@@ -57,7 +58,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    '''Проверяет ответ API на корректность.'''
+    """Проверяет ответ API на корректность."""
     if not isinstance(response['homeworks'], list):
         logger.error('Не найден ключ homeworks')
         raise AssertionError('Ключи отсутствуют')
@@ -70,8 +71,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    '''Извлекает информацию о конкретной
-     домашней работе статус этой работы.'''
+    """Извлекает информацию о статусе работы."""
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
     if homework_status not in HOMEWORK_STATUSES.keys():
@@ -81,7 +81,7 @@ def parse_status(homework):
 
 
 def check_tokens():
-    '''Возвращает переменные окружения если они доступны.'''
+    """Возвращает переменные окружения если они доступны."""
     return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
