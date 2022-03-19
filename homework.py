@@ -8,60 +8,16 @@ import telegram
 
 from constants import (
     ENDPOINT, HEADERS, PRACTICUM_TOKEN, RETRY_TIME, TELEGRAM_CHAT_ID,
-    TELEGRAM_TOKEN
+    TELEGRAM_TOKEN, HOMEWORK_STATUSES
 )
-
-HOMEWORK_STATUSES = {
-    'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
-    'reviewing': 'Работа взята на проверку ревьюером.',
-    'rejected': 'Работа проверена: у ревьюера есть замечания.'
-}
-
-logger = logging.getLogger(__name__)
-# убираю на 140стр,тесты падают - NameError: name 'logger' is not defined
-
-
-class NoKeyError(Exception):
-    """Наследую исключение для конкретной задачи."""
-
-    def __init__(self, *args):
-        """Вызывается при создании экземпляра."""
-        if args:
-            self.message = args[0]
-        else:
-            self.message = None
-
-    def __str__(self):
-        """Вызывается при выводе экземпляра на экран."""
-        if self.message:
-            return 'NoKeyError, {0} '.format(self.message)
-        else:
-            return 'NoKeyError, ключ не найден'
-
-
-class NoConnectionError(Exception):
-    """Наследую исключение для конкретной задачи."""
-
-    def __init__(self, *args):
-        """Вызывается при создании экземпляра."""
-        if args:
-            self.message = args[0]
-        else:
-            self.message = None
-
-    def __str__(self):
-        """Вызывается при выводе экземпляра на экран."""
-        if self.message:
-            return 'NoConnection {0} '.format(self.message)
-        else:
-            return 'NoConnection, не упешный запрос ресурса'
+from exceptions import NoConnectionError, NoKeyError, No200Error
 
 
 def send_message(bot, message):
     """Отправляет сообщение."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logger.info(f'Отправка сообщения: {message}')
+        logging.info(f'Отправка сообщения: {message}')
     except telegram.TelegramError as error:
         message = (f'Ошибка при отправке сообщения: {error}')
         raise telegram.TelegramError(message)
@@ -74,7 +30,7 @@ def get_api_answer(current_timestamp):
         api_answer = requests.get(ENDPOINT, headers=HEADERS, params=params)
         logging.info('Сервер работает')
         if api_answer.status_code != HTTPStatus.OK:
-            raise NoConnectionError
+            raise No200Error
         return api_answer.json()
     except NoConnectionError:
         logging.error('Ошибка при запросе к основному API')
@@ -84,19 +40,18 @@ def get_api_answer(current_timestamp):
 def check_response(response):
     """Проверяет ответ API на корректность."""
     if not isinstance(response['homeworks'], list):
-        logger.error('API возвращает не список')
+        logging.error('API возвращает не список')
         raise TypeError('Объект несоответствующего типа')
-    elif type(response['homeworks']) == dict:
-        logger.info('API возвращает словарь')
+    elif isinstance(response['homeworks'], dict):
+        logging.info('API возвращает словарь')
         raise TypeError('Объект несоответствующего типа')
     elif 'homeworks' not in response:
-        logger.error('Не найден ключ homeworks')
+        logging.error('Не найден ключ homeworks')
         raise NoKeyError
     elif 'current_date' not in response:
-        logger.error('Не найден ключ current_date')
+        logging.error('Не найден ключ current_date')
         raise NoKeyError
-    else:
-        logger.info('Проверка корректности API пройдена')
+    logging.info('Проверка корректности API пройдена')
     return response.get('homeworks')
 
 
@@ -109,7 +64,7 @@ def parse_status(homework):
     if homework_status is None:
         raise KeyError('Ключа с таким именем нет')
     elif homework_status not in HOMEWORK_STATUSES:
-        logger.error('Такого статуса нет')
+        logging.error('Такого статуса нет')
         raise KeyError('Проверьте корректность статуса')
     verdict = HOMEWORK_STATUSES[homework_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -151,6 +106,7 @@ if __name__ == '__main__':
             level=logging.INFO,
             format='%(asctime)s, %(levelname)s, %(message)s',
         )
+        logger = logging.getLogger(__name__)
         main()
     except Exception as error:
-        logger.error(f'Непредвиденная ошибка: {error}')
+        logging.error(f'Непредвиденная ошибка: {error}')
